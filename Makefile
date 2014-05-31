@@ -3,7 +3,7 @@ CXX_FLAGS=-Wall -g -std=c++11
 
 TARGET=wjatraki
 
-INTERFACES=common
+INTERFACES=common monitor_lock mpi_send_interfce mpi_receive_interace mpi_token_message
 
 SUBTARGETS=mpi_lock
 
