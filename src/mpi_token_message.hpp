@@ -5,8 +5,13 @@
 
 class MPITokenMessage {
 public:
+  Resource resource;
   bool send_back;
-  MPITokenMessage(bool send_back) : send_back(send_back) {}
+
+  MPITokenMessage(Resource resource, bool send_back)
+  : resource(resource)
+  , send_back(send_back)
+  {}
 };
 
 #endif
