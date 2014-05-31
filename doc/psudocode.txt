@@ -1,0 +1,113 @@
+side      : enum { SELF, LEFT, RIGHT, PARENT }
+state     : enum { IDLE, HAS_TOKEN }
+queue     : FIFO of side
+no_tokens : array[side] of int
+no_nodes  : array[side] of int
+tokens    : array of token
+
+RECORD token
+  id : int
+end
+
+RECORD msg
+  token     : token
+  send_back : boolean
+end
+
+PROCEDURE change_state(new_state)
+begin
+  state = new_state
+  notify_application_process(state)
+end
+
+PROCEDURE roulette(sides : array of side)
+  probs : array of double
+  r     : double
+begin
+
+  if sides.size == 1
+    return sides.first
+
+  probs = sides.map ->(side) { no_tokens[side] / no_nodes[side] }
+  for i in [1..probs.size - 1]
+    probs[i] += probs[i - 1]
+
+  r = random(0, probs.last)
+  for i in [0..probs.size - 2]
+    if r < probs[i]
+      return i
+  return probs.last
+end
+
+PROCEDURE deliver_token()
+begin
+  if !queue.empty?
+    side = queue.pop_front()
+    if side == SELF
+      change_state(HAS_TOKEN)
+    else
+      no_tokens[SELF] -= 1
+      msg.token = tokens.pop()
+      msg.send_back = (no_tokens.sum() == 0) and !queue.empty?
+      if !msg.send_back
+        no_tokens[side] += 1
+      send_token(Q[self], Q[side], msg)
+end
+
+PROCEDURE try_request_token(sides : array of side)
+begin
+  for side in sides
+    if no_tokens[side] == 0
+      sides \= side
+
+  if !sides.empty?
+    side = roulette(sides)
+    no_tokens[side] -= 1
+    send_request(Q[self], Q[side])
+end
+
+when release_resource()
+  change_state(IDLE)
+  deliver_token()
+end
+
+when receive_token(Q_j, Q_i, msg)
+  no_tokens[SELF] += 1
+  tokens.add(msg.token)
+  if msg.send_back
+    queue.push_back(Q_j.side)
+  deliver_token()
+end
+
+when request_resource()
+  if no_tokens[SELF] > 0
+    change_state(HAS_TOKEN)
+  else
+    queue.push_back(SELF)
+    try_request_token([LEFT, RIGHT, PARENT])
+end
+
+when receive_request(Q_j, Q_i)
+  side = Q_j.side
+  if no_tokens[SELF] > 1 || (no_tokens[SELF] == 1 and state == IDLE)
+    no_tokens[SELF] -= 1
+    no_tokens[side] += 1
+    msg.token = tokens.pop()
+    msg.flag = false
+    send_token(Q_i, Q_j, msg)
+  else
+    queue.push_back(side)
+    try_request_token([LEFT, RIGHT, PARENT] - [side])
+end
+
+
+
+
+...
+request_resource()
+
+# resource is obtained (critical section)
+...
+
+release_resource()
+...
