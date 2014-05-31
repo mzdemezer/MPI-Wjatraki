@@ -1,29 +1,21 @@
 #ifndef _INCLUDE_COMMON_HPP
 #define _INCLUDE_COMMON_HPP
 
+#include <mpi.h>
+
+#include <cstdio>
+
 #include <mutex>
 #include <thread>
+#include <queue>
+#include <vector>
+#include <map>
 
 using namespace std;
 
-#define SIDES_NUM 4
-#define RES_NUM   2
-
-enum state {
-  IDLE = 0,
-  HAS_TOKEN
-};
-
-enum side {
-  SELF = 0,
-  LEFT,
-  RIGHT,
-  PARENT
-};
-
-enum resource {
+typedef enum {
   WINDMILL = 0,
   HORSE
-};
+} Resource;
 
 #endif
