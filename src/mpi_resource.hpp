@@ -41,6 +41,9 @@ public:
   bool should_send_back();
   bool can_give_token();
 
+  string queue_to_str(vector<int> &sides);
+  string tokens_to_str(vector<int> &sides);
+  void print_state(vector<int> &sides);
 };
 
 #endif

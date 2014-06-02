@@ -64,3 +64,33 @@ bool MPIResource::can_give_token() {
   return no_tokens[SIDE_INDEX_SELF] > 1 ||
        ((no_tokens[SIDE_INDEX_SELF] == 1) && (state == IDLE));
 }
+
+string MPIResource::queue_to_str(vector<int> &sides) {
+  queue<unsigned> q(requests);
+  string st("queue:");
+  while(!q.empty()) {
+    st += "\t" + to_string(sides[q.front()]);
+    q.pop();
+  }
+  return st;
+}
+
+string MPIResource::tokens_to_str(vector<int> &sides) {
+  queue<unsigned> q(requests);
+  string st("tokens(" + to_string(sum_of_tokens) + "):");
+  for (unsigned i = 0; i < no_tokens.size(); ++i) {
+    st += "\t" + to_string(sides[i]) + " => " + to_string(no_tokens[i]);
+  }
+  return st;
+}
+
+void MPIResource::print_state(vector<int> &sides) {
+  string st("#" + to_string(sides[SIDE_INDEX_SELF]) + " (" + RESOURCE(type) + "): ");
+  st += state == IDLE ? "IDLE" : "HAS_TOKEN";
+  st += "\t";
+  st += tokens_to_str(sides);
+  st += "\t";
+  st += queue_to_str(sides);
+  st += "\n";
+  printf("%s", st.c_str());
+}

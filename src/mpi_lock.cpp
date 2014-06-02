@@ -36,7 +36,7 @@ void MPILock::initialize_sides() {
     if (sides.size() > SIDE_INDEX_FIRST_CHILD) {
       printf(",\t{% 2d", sides[SIDE_INDEX_FIRST_CHILD]);
       for (unsigned i = SIDE_INDEX_FIRST_CHILD + 1; i < sides.size(); ++i) printf(", % 2d", sides[i]);
-      printf(" }\n");
+      printf(" }");
     }
     printf("\n");
   }
@@ -66,11 +66,11 @@ void MPILock::add_resource(Resource resource, unsigned tokens) {
 }
 
 void MPILock::reserve(Resource resource) {
-  if (DEBUG) printf("#%u: reserve(%s)\n", index, RESOURCE(resource));
-
   MPIResource *res = get_resource(resource);
 
   res->lock();
+  if (DEBUG) printf("#%u: reserve(%s)\n", index, RESOURCE(resource));
+  if (DEBUG) res->print_state(sides);
   if (res->has_any_tokens(SIDE_INDEX_SELF)) {
     res->change_state(HAS_TOKEN);
   } else {
@@ -81,19 +81,24 @@ void MPILock::reserve(Resource resource) {
       choices.push_back(side_index);
     }
     try_request_token(res, choices);
+    if (DEBUG) res->print_state(sides);
+    if (DEBUG) printf("#%u: wait(%s)\n", index, RESOURCE(resource));
     res->wait();
+    if (DEBUG) printf("#%u: woken up(%s)\n", index, RESOURCE(resource));
   }
   if (DEBUG) printf("#%u: reserved successfully(%s)\n", index, RESOURCE(resource));
+  if (DEBUG) res->print_state(sides);
   res->unlock();
 }
 
 void MPILock::release(Resource resource) {
-  if (DEBUG) printf("#%u: release(%s)\n", index, RESOURCE(resource));
-
   MPIResource *res = get_resource(resource);
   res->lock();
+  if (DEBUG) printf("#%u: release(%s)\n", index, RESOURCE(resource));
+  if (DEBUG) res->print_state(sides);
   res->change_state(IDLE);
   deliver_token(res);
+  if (DEBUG) res->print_state(sides);
   res->unlock();
 }
 
@@ -117,28 +122,29 @@ void MPILock::deliver_token(MPIResource *resource) {
 }
 
 void MPILock::receive_token(unsigned sender, MPITokenMessage &message) {
-  if (DEBUG) printf("#%u: received token from #%u for %s\n", index, sender, RESOURCE(message.resource));
-
   MPIResource *resource = get_resource(message.resource);
 
   resource->lock();
+  if (DEBUG) printf("#%u: received token from #%u for %s\n", index, sender, RESOURCE(message.resource));
+  if (DEBUG) resource->print_state(sides);
   resource->add_token(SIDE_INDEX_SELF);
 
   if (message.send_back) {
     resource->push_request(get_side_index(sender));
   }
   deliver_token(resource);
+  if (DEBUG) resource->print_state(sides);
   resource->unlock();
 }
 
 void MPILock::receive_request(unsigned sender, MPIRequestMessage &message) {
-  if (DEBUG) printf("#%u: requested by #%u for %s\n", index, sender, RESOURCE(message.resource));
-
   MPIResource *resource = get_resource(message.resource);
 
   unsigned side_index = get_side_index(sender);
 
   resource->lock();
+  if (DEBUG) printf("#%u: requested by #%u for %s\n", index, sender, RESOURCE(message.resource));
+  if (DEBUG) resource->print_state(sides);
   if (resource->can_give_token()) {
     resource->transfer_token(SIDE_INDEX_SELF, side_index);
     MPITokenMessage message(resource->get_type(), false);
@@ -149,9 +155,19 @@ void MPILock::receive_request(unsigned sender, MPIRequestMessage &message) {
     vector<unsigned> choices(1, SIDE_INDEX_PARENT);
     for (unsigned idx = SIDE_INDEX_FIRST_CHILD, len = sides.size(); idx < len; idx += 1) {
       if(idx != side_index) { choices.push_back(side_index); }
+
+    if (DEBUG >= 2) {
+      printf("#%u: choices(%lu) - { %u }", index, choices.size(), side_index);
+      if (choices.size() > 0) {
+        printf(",\t{ %u", choices[0]);
+        for (unsigned i = 1; i < choices.size(); ++i) printf(", %u", choices[i]);
+        printf(" }");
+      }
+      printf("\n");
     }
     try_request_token(resource, choices);
   }
+  if (DEBUG) resource->print_state(sides);
   resource->unlock();
 }
 
