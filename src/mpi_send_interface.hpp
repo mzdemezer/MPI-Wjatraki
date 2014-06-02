@@ -1,13 +1,17 @@
 #ifndef _INCLUDE_MPI_SEND_INTERFACE_HPP
 #define _INCLUDE_MPI_SEND_INTERFACE_HPP
 
+class MPISendInterface;
+
 #include "common.hpp"
-#include "mpi_token_message.hpp"
+#include "messages/mpi_token_message.hpp"
+#include "messages/mpi_request_message.hpp"
+#include "mpi_lock.hpp"
 
 class MPISendInterface {
 public:
-  void send_token(unsigned receiver, Resource resource, MPITokenMessage &message) = 0;
-  void send_request(unsigned receiver, Resource resource) = 0;
+  virtual void send_token(unsigned receiver, MPITokenMessage *message) = 0;
+  virtual void send_request(unsigned receiver, MPIRequestMessage *message) = 0;
 };
 
 #endif
