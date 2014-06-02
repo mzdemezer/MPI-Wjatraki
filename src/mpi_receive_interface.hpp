@@ -6,7 +6,7 @@
 
 class MPIReceiveInterface {
 public:
-  void receive_message(MPILock &resource_lock) = 0;
+  virtual void receive_message(MPILock &resource_lock) = 0;
 };
 
 #endif

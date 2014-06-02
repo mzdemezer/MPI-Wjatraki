@@ -7,10 +7,8 @@ class Lockable {
 private:
   mutex mtx;
   condition_variable cv;
-  unique_lock<mutex> lck;
 
 public:
-  Lockable();
   virtual ~Lockable();
 
   void lock();

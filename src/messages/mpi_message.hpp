@@ -7,6 +7,7 @@ class MPILock;
 class MPIMessage {
 public:
   virtual void deliver(unsigned sender, MPILock &resource_lock) = 0;
+  virtual ~MPIMessage() {}
 };
 
 #endif

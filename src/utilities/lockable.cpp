@@ -1,20 +1,17 @@
 #include "lockable.hpp"
 
-Lockable::Lockable()
-: lck(mtx, defer_lock)
-{}
-
-virtual ~Lockable() {}
+Lockable::~Lockable() {}
 
 void Lockable::lock() {
-  lck.lock();
+  mtx.lock();
 }
 
 void Lockable::unlock() {
-  lck.unlock();
+  mtx.unlock();
 }
 
 void Lockable::wait() {
+  unique_lock<mutex> lck(mtx, defer_lock);
   cv.wait(lck);
 }
 

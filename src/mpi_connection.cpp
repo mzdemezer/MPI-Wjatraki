@@ -8,16 +8,16 @@ MPIConnection::~MPIConnection() {
   MPI_Finalize();
 }
 
-unsigned get_index() {
-  unsigned index;
+unsigned MPIConnection::get_index() {
+  int index;
   MPI_Comm_rank(MPI_COMM_WORLD, &index);
-  return index;
+  return (unsigned)index;
 }
 
-unsigned get_size() {
-  unsigned size;
+unsigned MPIConnection::get_size() {
+  int size;
   MPI_Comm_size(MPI_COMM_WORLD, &size);
-  return size;
+  return (unsigned)size;
 }
 
 void MPIConnection::send_token(unsigned receiver, MPITokenMessage *message) {

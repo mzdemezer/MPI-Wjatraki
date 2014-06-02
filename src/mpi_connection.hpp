@@ -9,6 +9,11 @@ class MPIConnection;
 
 #define MAX_MESSAGE_SIZE (max(sizeof(MPIRequestMessage), sizeof(MPITokenMessage)))
 
+typedef enum {
+  TOKEN_TAG = 1,
+  REQUEST_TAG = 2
+} MessageTag;
+
 class MPIConnection : public MPISendInterface, public MPIReceiveInterface {
 private:
   void send_message(unsigned receiver, void *message, int message_size, int tag);

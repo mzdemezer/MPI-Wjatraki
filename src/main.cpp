@@ -3,6 +3,8 @@
 #include "mpi_controller.hpp"
 
 #define TREE_RANK 2
+#define NUMBER_OF_HORSES 1
+#define NUMBER_OF_WINDMILLS 1
 
 bool should_work = true;
 
@@ -43,10 +45,10 @@ void monitor_process(MPIController &controller) {
 
 int main(int argc, char **argv) {
   thread application_thread;
-  MPIController controller(&argc, argv, TREE_RANK);
+  MPIController controller(&argc, &argv, (unsigned)TREE_RANK);
 
-  controller.add_resource(HORSE);
-  controller.add_resource(WINDMILL);
+  controller.add_resource(HORSE, NUMBER_OF_HORSES);
+  controller.add_resource(WINDMILL, NUMBER_OF_WINDMILLS * 4);
 
   // signal(SIGINT, stop_work);
 

@@ -8,6 +8,7 @@ public:
   virtual ~MonitorLock() {}
   virtual void reserve(Resource resource) = 0;
   virtual void release(Resource resource) = 0;
+  virtual unsigned get_index() = 0;
 };
 
 #endif

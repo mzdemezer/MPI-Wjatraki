@@ -15,11 +15,11 @@ typedef enum {
 
 class MPIResource {
 private:
-  vector<unsigned> no_tokens;                // Number of available tokens in neighbour nodes and in self
-  unsigned sum_of_tokens;
-  queue<unsigned> requests;                  // FIFO of nodes requesting token - sides' indices
-  MPIState state;                        // Current state
   Resource type;
+  vector<unsigned> no_tokens;    // Number of available tokens in neighbour nodes and in self
+  unsigned sum_of_tokens;
+  queue<unsigned> requests;      // FIFO of nodes requesting token - sides' indices
+  MPIState state;                // Current state
 
 public:
   MPIResource(Resource type, unsigned no_sides, unsigned tokens, bool is_root)

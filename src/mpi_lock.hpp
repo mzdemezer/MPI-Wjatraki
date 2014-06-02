@@ -44,6 +44,8 @@ public:
 
   void receive_token(unsigned sender, MPITokenMessage &message);
   void receive_request(unsigned sender, MPIRequestMessage &message);
+
+  unsigned get_index() { return index; }
 };
 
 #endif
