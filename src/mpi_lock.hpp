@@ -4,45 +4,46 @@
 class MPILock;
 
 #include "common.hpp"
+#include "utilities/lockable.hpp"
+#include "mpi_resource.hpp"
+#include "mpi_send_interface.hpp"
 #include "monitor_lock.hpp"
+#include "messages/mpi_token_message.hpp"
+#include "messages/mpi_request_message.hpp"
 
-#define SIDE_INDEX_SELF 0
-#define SIDE_INDEX_PARENT 1
-#define ROOT_INDEX 0
-
-typedef enum {
-  IDLE = 0
-, HAS_TOKEN
-} MPILockState;
-
-class MPILock : public MonitorLock {
+class MPILock : public MonitorLock, protected Lockable {
   unsigned index, size, tree_rank;
   vector<int> sides;
   map<int, unsigned> side_map;
-  vector<unsigned> no_tokens;                // Number of available tokens in neighbour nodes and in self
-  unsigned sum_of_tokens;
-  queue<unsigned> requests;                  // FIFO of nodes requesting token
-  Resource resource;                         // type of resource
 
-  MPILockState state;                        // Current state
+  map<Resource, MPIResource*> resources;
+
   MPISendInterface *interface;
 
   void initialize_sides();
   void initialize_side_map();
   int parent_index();
-  void initialize_tokens(unsigned tokens);
-  unsigned get_side_index(unsigned sender);
-  void change_state(MPILockState new_state);
-  void try_request_token(vector<unsigned> &choices);
-  void deliver_token();
-  unsigned roulette(vector<short> &choices);
-public:
-  MPILock(unsigned index, unsigned size, unsigned tree_rank, unsigned tokens, Resource resource);
-  void reserve();
-  void release();
+  unsigned get_side_index(unsigned side);
+  void change_state(MPIResource *resource, MPIState new_state);
+  void try_request_token(MPIResource *resource, vector<unsigned> &choices);
+  void deliver_token(MPIResource *resource);
+  unsigned roulette(vector<unsigned> &choices);
 
-  void receive_token(unsigned sender, msg);
-  void receive_request(unsigned sender);
+  MPIResource *get_resource(Resource resource) {
+    return resources[resource];
+  }
+public:
+  MPILock(unsigned index, unsigned size, unsigned tree_rank, MPISendInterface *interface);
+  ~MPILock();
+
+  void add_resource(Resource resource, unsigned tokens);
+  bool is_root();
+
+  void reserve(Resource resource);
+  void release(Resource resource);
+
+  void receive_token(unsigned sender, MPITokenMessage &message);
+  void receive_request(unsigned sender, MPIRequestMessage &message);
 };
 
 #endif

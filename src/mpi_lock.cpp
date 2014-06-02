@@ -1,16 +1,23 @@
 #include "mpi_lock.hpp"
 
-MPILock::MPILock(unsigned index, unsigned size, unsigned tree_rank, unsigned tokens,
-  Resource resource, MPISendInterface *interface)
-: index(index)
+MPILock::MPILock(unsigned index, unsigned size, unsigned tree_rank, MPISendInterface *interface)
+: Lockable()
+, index(index)
 , size(size)
 , tree_rank(tree_rank)
-, sum_of_tokens(tokens)
-, resource(resource)
-, interace(interace) {
+, interface(interface) {
   initialize_sides();
   initialize_side_map();
-  initialize_tokens(tokens);
+}
+
+MPILock::~MPILock() {
+  for (map<Resource, MPIResource*>::iterator it = resources.begin(); it != resources.end(); ++it) {
+    delete it->second;
+  }
+
+  // Probably unnecessary
+  resources.clear();
+  side_map.clear();
 }
 
 void MPILock::initialize_sides() {
@@ -23,7 +30,6 @@ void MPILock::initialize_sides() {
       (child_num += 1), (child_index += 1) ) {
     sides.push_back(child_index);
   }
-
 }
 
 void MPILock::initialize_side_map() {
@@ -34,117 +40,132 @@ void MPILock::initialize_side_map() {
 }
 
 int MPILock::parent_index() {
-  if (index == ROOT_INDEX) {
+  if (is_root()) {
     return -1;
   } else {
     return (index - 1) / tree_rank;
   }
 }
 
-void MPILock::initialize_tokens(unsigned tokens) {
-  no_tokens.reserve(sides.size());
-  no_tokens.insert(no_tokens.begin(), sides.size(), 0);
-  if (index == ROOT_INDEX) {
-    no_tokens[SIDE_INDEX_SELF] = tokens;
+bool MPILock::is_root() {
+  return index == ROOT_INDEX;
+}
+
+void MPILock::add_resource(Resource resource, unsigned tokens) {
+  resources[resource] = new MPIResource(resource, sides.size(), tokens, is_root());
+}
+
+void MPILock::reserve(Resource resource) {
+  MPIResource *res = get_resource(resource);
+
+  lock();
+  if (res->has_any_tokens(SIDE_INDEX_SELF)) {
+    change_state(res, HAS_TOKEN);
   } else {
-    no_tokens[SIDE_INDEX_PARENT] = tokens;
+    res->push_request(SIDE_INDEX_SELF);
+
+    vector<unsigned> choices(1, SIDE_INDEX_PARENT);
+    for (unsigned side_index = SIDE_INDEX_FIRST_CHILD, len = sides.size(); side_index < len; side_index += 1) {
+      choices.push_back(side_index);
+    }
+    try_request_token(res, choices);
+    wait();
   }
+  unlock();
 }
 
-void MPILock::reserve() {
-  if (no_tokens[SIDE_INDEX_SELF] > 0) {
-    change_state(HAS_TOKEN);
-  } else {
-    queue.push_back(SIDE_INDEX_SELF);
-    // vector SIDE_INDEX_PARENT..sides.size()
-    // try_request_token();
-  }
+void MPILock::release(Resource resource) {
+  MPIResource *res = get_resource(resource);
+  lock();
+  change_state(res, IDLE);
+  deliver_token(res);
+  unlock();
 }
 
-void MPILock::release() {
-  change_state(IDLE);
-  deliver_token();
-}
-
-
-// sum_of_tokens
-
-void MPILock::deliver_token() {
-  if (!queue.empty()) {
-    side_index = queue.front();
-    queue.pop();
+void MPILock::deliver_token(MPIResource *resource) {
+  if (resource->has_any_requests()) {
+    unsigned side_index = resource->pop_request();
 
     if (side_index == SIDE_INDEX_SELF) {
-      change_state(HAS_TOKEN);
+      change_state(resource, HAS_TOKEN);
     } else {
-      no_tokens[SIDE_INDEX_SELF] -= 1;
+      resource->remove_token(SIDE_INDEX_SELF);
 
-      MPITokenMessage message((sum_of_tokens == 1) && !queue.empty());
-      if (message.send_back) {
-        sum_of_tokens -= 1;
-      } else {
-        no_tokens[side_index] += 1;
+      bool send_back = resource->should_send_back();
+      MPITokenMessage message(resource->get_type(), send_back);
+      if (!send_back) {
+        resource->add_token(side_index);
       }
-      interace->send_token(sides[side_index], resource, message);
+      interface->send_token(sides[side_index], &message);
     }
   }
 }
 
 // when
-void MPILock::receive_token(unsigned sender, msg) {
-  no_tokens[SIDE_INDEX_SELF] += 1;
-  sum_of_tokens += 1;
+void MPILock::receive_token(unsigned sender, MPITokenMessage &message) {
+  MPIResource *resource = get_resource(message.resource);
+
+  lock();
+  resource->add_token(SIDE_INDEX_SELF);
 
   if (message.send_back) {
     // assert in map??
-    queue.push(get_side_index(sender));
+    resource->push_request(get_side_index(sender));
   }
-  deliver_token();
+  deliver_token(resource);
+  unlock();
 }
 
 // when
-void MPILock::receive_request(unsigned sender) {
-  side_index = get_side_index(sender);
-  if (no_tokens[SIDE_INDEX_SELF] > 1 ||
-     ((no_tokens[SIDE_INDEX_SELF] == 1) && (state == IDLE)) ) {
-    no_tokens[SIDE_INDEX_SELF] -= 1;
-    no_tokens[side_index] += 1;
-    MPITokenMessage message(false);
-    interace->send_token(sides[side_index], resource, message);
+void MPILock::receive_request(unsigned sender, MPIRequestMessage &message) {
+  MPIResource *resource = get_resource(message.resource);
+
+  unsigned side_index = get_side_index(sender);
+
+  lock();
+  if (resource->can_give_token()) {
+    resource->transfer_token(SIDE_INDEX_SELF, side_index);
+    MPITokenMessage message(resource->get_type(), false);
+    interface->send_token(sides[side_index], &message);
   } else {
-    queue.push_back(side_index);
-    // [LEFT, RIGHT, PARENT] - [side]
-    // try_request_token()
+    resource->push_request(side_index);
+
+    vector<unsigned> choices(1, SIDE_INDEX_PARENT);
+    for (unsigned idx = SIDE_INDEX_FIRST_CHILD, len = sides.size(); idx < len; idx += 1) {
+      if(idx != side_index) { choices.push_back(side_index); }
+    }
+    try_request_token(resource, choices);
   }
+  unlock();
 }
 
-unsigned MPILock::get_side_index(unsigned sender) {
-  return side_map[(int)sender];
+unsigned MPILock::get_side_index(unsigned side) {
+  return side_map[(int)side];
 }
 
-void MPILock::try_request_token(vector<unsigned> &choices) {
-  if (sum_of_tokens == 0) { return; }
+void MPILock::try_request_token(MPIResource *resource, vector<unsigned> &choices) {
+  if (resource->empty_tokens()) { return; }
 
-  for (unsigned i = 0; side_index < choices.size();) {
-    if (no_tokens[choices[i]] == 0) {
-      choices.erase(choices.begin() + i);
-    } else {
+  for (unsigned i = 0; i < choices.size();) {
+    if (resource->has_any_tokens(choices[i])) {
       i += 1;
+    } else {
+      choices.erase(choices.begin() + i);
     }
   }
 
   {
     unsigned side_index = roulette(choices);
-    no_tokens[side_index] -= 1;
-    sum_of_tokens -= 1;
-    interace->send_request(sides[side_index], resource);
+    resource->remove_token(side_index);
+    MPIRequestMessage message(resource->get_type());
+    interface->send_request(sides[side_index], &message);
   }
 }
 
 
-void MPILock::change_state(MPILockState new_state) {
-  state = new_state;
-  // notify()
+void MPILock::change_state(MPIResource *resource, MPIState new_state) {
+  resource->change_state(new_state);
+  notify();
 }
 
-unsigned MPILock::roulette(vector<short> &choices) { return *(choices->begin()); }
+unsigned MPILock::roulette(vector<unsigned> &choices) { return choices[0]; }
