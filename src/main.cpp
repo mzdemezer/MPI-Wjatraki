@@ -28,11 +28,13 @@ void application_process(MonitorLock *lock) {
     lock->reserve(HORSE);
     lock->reserve(WINDMILL);
 
+    if (DEBUG) printf("#%u: fighting\n", lock->get_index());
     random_sleep(400, 1000);
 
     lock->release(HORSE);
     lock->release(WINDMILL);
 
+    if (DEBUG) printf("#%u: thinking\n", lock->get_index());
     random_sleep(200, 1500);
   }
 }

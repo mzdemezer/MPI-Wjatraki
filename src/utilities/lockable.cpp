@@ -12,7 +12,9 @@ void Lockable::unlock() {
 
 void Lockable::wait() {
   unique_lock<mutex> lck(mtx, defer_lock);
+  if (DEBUG) printf("\t\twait\n");
   cv.wait(lck);
+  if (DEBUG) printf("\t\twoken up\n");
 }
 
 void Lockable::notify() {

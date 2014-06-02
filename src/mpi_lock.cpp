@@ -30,6 +30,17 @@ void MPILock::initialize_sides() {
       (child_num += 1), (child_index += 1) ) {
     sides.push_back(child_index);
   }
+  if (DEBUG) {
+    printf("#%u: sides(%lu) ", index, sides.size());
+    printf("PARENT: % 3d,\t", sides[SIDE_INDEX_PARENT]);
+    printf("SELF: % 3d", sides[SIDE_INDEX_SELF]);
+    if (sides.size() > SIDE_INDEX_FIRST_CHILD) {
+      printf(",\t{% 2d", sides[SIDE_INDEX_FIRST_CHILD]);
+      for (unsigned i = SIDE_INDEX_FIRST_CHILD + 1; i < sides.size(); ++i) printf(", % 2d", sides[i]);
+      printf(" }\n");
+    }
+    printf("\n");
+  }
 }
 
 void MPILock::initialize_side_map() {
@@ -56,6 +67,8 @@ void MPILock::add_resource(Resource resource, unsigned tokens) {
 }
 
 void MPILock::reserve(Resource resource) {
+  if (DEBUG) printf("#%u: reserve(%s)\n", index, RESOURCE(resource));
+
   MPIResource *res = get_resource(resource);
 
   lock();
@@ -72,9 +85,12 @@ void MPILock::reserve(Resource resource) {
     wait();
   }
   unlock();
+  if (DEBUG) printf("#%u: reserved successfully(%s)\n", index, RESOURCE(resource));
 }
 
 void MPILock::release(Resource resource) {
+  if (DEBUG) printf("#%u: release(%s)\n", index, RESOURCE(resource));
+
   MPIResource *res = get_resource(resource);
   lock();
   change_state(res, IDLE);
@@ -102,6 +118,8 @@ void MPILock::deliver_token(MPIResource *resource) {
 }
 
 void MPILock::receive_token(unsigned sender, MPITokenMessage &message) {
+  if (DEBUG) printf("#%u: received token from #%u for %s\n", index, sender, RESOURCE(message.resource));
+
   MPIResource *resource = get_resource(message.resource);
 
   lock();
@@ -115,6 +133,8 @@ void MPILock::receive_token(unsigned sender, MPITokenMessage &message) {
 }
 
 void MPILock::receive_request(unsigned sender, MPIRequestMessage &message) {
+  if (DEBUG) printf("#%u: requested by #%u for %s\n", index, sender, RESOURCE(message.resource));
+
   MPIResource *resource = get_resource(message.resource);
 
   unsigned side_index = get_side_index(sender);
@@ -141,7 +161,6 @@ unsigned MPILock::get_side_index(unsigned side) {
 }
 
 void MPILock::try_request_token(MPIResource *resource, vector<unsigned> &choices) {
-
   for (unsigned i = 0; i < choices.size();) {
     if (resource->has_any_tokens(choices[i])) {
       i += 1;
