@@ -1,10 +1,13 @@
 #ifndef _INCLUDE_MONITOR_LOCK_HPP
 #define _INCLUDE_MONITOR_LOCK_HPP
 
+#include "common.hpp"
+
 class MonitorLock {
 public:
-  void reserve() = 0;
-  void release() = 0;
+  virtual ~MonitorLock() {}
+  virtual void reserve(Resource resource) = 0;
+  virtual void release(Resource resource) = 0;
 };
 
 #endif
