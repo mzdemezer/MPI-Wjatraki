@@ -11,7 +11,7 @@ class MPILock;
 #include "messages/mpi_token_message.hpp"
 #include "messages/mpi_request_message.hpp"
 
-class MPILock : public MonitorLock, protected Lockable {
+class MPILock : public MonitorLock {
   unsigned index, size, tree_rank;
   vector<int> sides;
   map<int, unsigned> side_map;
@@ -24,7 +24,6 @@ class MPILock : public MonitorLock, protected Lockable {
   void initialize_side_map();
   int parent_index();
   unsigned get_side_index(unsigned side);
-  void change_state(MPIResource *resource, MPIState new_state);
   void try_request_token(MPIResource *resource, vector<unsigned> &choices);
   void deliver_token(MPIResource *resource);
   unsigned roulette(vector<unsigned> &choices);

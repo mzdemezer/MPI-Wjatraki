@@ -11,8 +11,8 @@ MESSAGES_S=mpi_token_message mpi_request_message
 INTERFACE_MESSAGES=$(addprefix messages/, $(MESSAGES_I))
 SUBTARGET_MESSAGES=$(addprefix messages/, $(MESSAGES_S))
 
-INTERFACES=common monitor_lock mpi_send_interface mpi_receive_interface mpi_resource $(INTERFACE_MESSAGES)
-SUBTARGETS=$(SUBTARGET_UTILITES) $(SUBTARGET_MESSAGES) mpi_lock mpi_controller mpi_connection
+INTERFACES=common monitor_lock mpi_send_interface mpi_receive_interface $(INTERFACE_MESSAGES)
+SUBTARGETS=$(SUBTARGET_UTILITES) $(SUBTARGET_MESSAGES) mpi_resource mpi_lock mpi_controller mpi_connection
 
 TARGET_FILES=$(SUBTARGETS) main
 HEADER_FILES=$(SUBTARGETS) $(INTERFACES)

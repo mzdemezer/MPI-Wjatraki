@@ -1,8 +1,7 @@
 #include "mpi_lock.hpp"
 
 MPILock::MPILock(unsigned index, unsigned size, unsigned tree_rank, MPISendInterface *interface)
-: Lockable()
-, index(index)
+: index(index)
 , size(size)
 , tree_rank(tree_rank)
 , interface(interface) {
@@ -71,9 +70,9 @@ void MPILock::reserve(Resource resource) {
 
   MPIResource *res = get_resource(resource);
 
-  lock();
+  res->lock();
   if (res->has_any_tokens(SIDE_INDEX_SELF)) {
-    change_state(res, HAS_TOKEN);
+    res->change_state(HAS_TOKEN);
   } else {
     res->push_request(SIDE_INDEX_SELF);
 
@@ -82,20 +81,20 @@ void MPILock::reserve(Resource resource) {
       choices.push_back(side_index);
     }
     try_request_token(res, choices);
-    wait();
+    res->wait();
   }
-  unlock();
   if (DEBUG) printf("#%u: reserved successfully(%s)\n", index, RESOURCE(resource));
+  res->unlock();
 }
 
 void MPILock::release(Resource resource) {
   if (DEBUG) printf("#%u: release(%s)\n", index, RESOURCE(resource));
 
   MPIResource *res = get_resource(resource);
-  lock();
-  change_state(res, IDLE);
+  res->lock();
+  res->change_state(IDLE);
   deliver_token(res);
-  unlock();
+  res->unlock();
 }
 
 void MPILock::deliver_token(MPIResource *resource) {
@@ -103,7 +102,7 @@ void MPILock::deliver_token(MPIResource *resource) {
     unsigned side_index = resource->pop_request();
 
     if (side_index == SIDE_INDEX_SELF) {
-      change_state(resource, HAS_TOKEN);
+      resource->change_state(HAS_TOKEN);
     } else {
       resource->remove_token(SIDE_INDEX_SELF);
 
@@ -122,14 +121,14 @@ void MPILock::receive_token(unsigned sender, MPITokenMessage &message) {
 
   MPIResource *resource = get_resource(message.resource);
 
-  lock();
+  resource->lock();
   resource->add_token(SIDE_INDEX_SELF);
 
   if (message.send_back) {
     resource->push_request(get_side_index(sender));
   }
   deliver_token(resource);
-  unlock();
+  resource->unlock();
 }
 
 void MPILock::receive_request(unsigned sender, MPIRequestMessage &message) {
@@ -139,7 +138,7 @@ void MPILock::receive_request(unsigned sender, MPIRequestMessage &message) {
 
   unsigned side_index = get_side_index(sender);
 
-  lock();
+  resource->lock();
   if (resource->can_give_token()) {
     resource->transfer_token(SIDE_INDEX_SELF, side_index);
     MPITokenMessage message(resource->get_type(), false);
@@ -153,7 +152,7 @@ void MPILock::receive_request(unsigned sender, MPIRequestMessage &message) {
     }
     try_request_token(resource, choices);
   }
-  unlock();
+  resource->unlock();
 }
 
 unsigned MPILock::get_side_index(unsigned side) {
@@ -177,12 +176,6 @@ void MPILock::try_request_token(MPIResource *resource, vector<unsigned> &choices
     MPIRequestMessage message(resource->get_type());
     interface->send_request(sides[side_index], &message);
   }
-}
-
-
-void MPILock::change_state(MPIResource *resource, MPIState new_state) {
-  resource->change_state(new_state);
-  notify();
 }
 
 unsigned MPILock::roulette(vector<unsigned> &choices) { return choices[0]; }
