@@ -24,4 +24,8 @@ typedef enum {
   HORSE
 } Resource;
 
+#define DEBUG 1
+#define RESOURCE(r) (r == WINDMILL ? "Windmill" : "Horse")
+#define BOOLEAN(b) (b ? "true" : "false")
+
 #endif
