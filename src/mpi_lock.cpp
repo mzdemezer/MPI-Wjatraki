@@ -152,9 +152,13 @@ void MPILock::receive_request(unsigned sender, MPIRequestMessage &message) {
   } else {
     resource->push_request(side_index);
 
-    vector<unsigned> choices(1, SIDE_INDEX_PARENT);
+    vector<unsigned> choices;
+    if (side_index != SIDE_INDEX_PARENT) {
+      choices.push_back(SIDE_INDEX_PARENT);
+    }
     for (unsigned idx = SIDE_INDEX_FIRST_CHILD, len = sides.size(); idx < len; idx += 1) {
-      if(idx != side_index) { choices.push_back(side_index); }
+      if(idx != side_index) { choices.push_back(idx); }
+    }
 
     if (DEBUG >= 2) {
       printf("#%u: choices(%lu) - { %u }", index, choices.size(), side_index);
