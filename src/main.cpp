@@ -2,25 +2,14 @@
 #include "mpi_lock.hpp"
 #include "mpi_controller.hpp"
 
-#define TREE_RANK 2
-#define NUMBER_OF_HORSES 1
-#define NUMBER_OF_WINDMILLS 1
+#define TREE_RANK 5
+#define NUMBER_OF_HORSES 10
+#define NUMBER_OF_WINDMILLS 2
 
 bool should_work = true;
 
 void stop_work(int sig) {
   should_work = false;
-}
-
-unsigned random_unsigned(unsigned from, unsigned to) {
-  default_random_engine generator;
-  uniform_int_distribution<unsigned> distribution(from, to);
-  return distribution(generator);
-}
-
-void random_sleep(unsigned min_ms, unsigned max_ms) {
-  unsigned sleep_time = random_unsigned(min_ms, max_ms);
-  this_thread::sleep_for(chrono::milliseconds(sleep_time));
 }
 
 void application_process(MonitorLock *lock) {

@@ -24,6 +24,9 @@ typedef enum {
   HORSE
 } Resource;
 
+unsigned random_unsigned(unsigned from, unsigned to);
+void random_sleep(unsigned min_ms, unsigned max_ms);
+
 #define DEBUG 1
 #define RESOURCE(r) (r == WINDMILL ? "Windmill" : "Horse")
 #define BOOLEAN(b) (b ? "true" : "false")
