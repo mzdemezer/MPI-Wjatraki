@@ -24,6 +24,7 @@ void random_sleep(unsigned min_ms, unsigned max_ms) {
 }
 
 void application_process(MonitorLock *lock) {
+  this_thread::sleep_for(chrono::milliseconds(200));
   while (should_work) {
     lock->reserve(HORSE);
     lock->reserve(WINDMILL);
