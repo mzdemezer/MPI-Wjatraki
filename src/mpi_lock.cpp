@@ -191,11 +191,29 @@ void MPILock::try_request_token(MPIResource *resource, vector<unsigned> &choices
   if (choices.empty()) { return; }
 
   {
-    unsigned side_index = roulette(choices);
+    unsigned side_index = roulette(resource, choices);
     resource->remove_token(side_index);
     MPIRequestMessage message(resource->get_type());
     interface->send_request(sides[side_index], &message);
   }
 }
 
-unsigned MPILock::roulette(vector<unsigned> &choices) { return choices[0]; }
+unsigned MPILock::roulette(MPIResource *resource, vector<unsigned> &choices) {
+  if (choices.size() == 1) {
+    return choices.front();
+  } else {
+    vector<unsigned> dist;
+    dist.reserve(choices.size());
+    for (unsigned i = 0, len = choices.size(); i < len; ++i) {
+      dist.push_back(resource->get_no_tokens(choices[i]));
+    }
+    for (unsigned i = 1, len = choices.size(); i < len; ++i) {
+      dist[i] += dist[i - 1];
+    }
+    unsigned random_case = random_unsigned(0, dist.back());
+    for (unsigned i = 0, len = dist.size(); i < len; ++i) {
+      if (random_case < dist[i]) return choices[i];
+    }
+    return choices.back();
+  }
+}

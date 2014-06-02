@@ -26,7 +26,7 @@ class MPILock : public MonitorLock {
   unsigned get_side_index(unsigned side);
   void try_request_token(MPIResource *resource, vector<unsigned> &choices);
   void deliver_token(MPIResource *resource);
-  unsigned roulette(vector<unsigned> &choices);
+  unsigned roulette(MPIResource *resource, vector<unsigned> &choices);
 
   MPIResource *get_resource(Resource resource) {
     return resources[resource];

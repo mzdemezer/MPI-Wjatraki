@@ -30,6 +30,7 @@ public:
   unsigned pop_request();
 
   Resource get_type() { return type; }
+  unsigned get_no_tokens(unsigned side) { return no_tokens[side]; }
 
   bool has_any_requests();
 
