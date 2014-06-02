@@ -3,9 +3,16 @@ CXX_FLAGS=-Wall -g -std=c++11
 
 TARGET=wjatraki
 
-INTERFACES=common monitor_lock mpi_send_interfce mpi_receive_interace mpi_token_message
+UTILITIES=lockable
+SUBTARGET_UTILITES=$(addprefix utilities/, $(UTILITIES))
 
-SUBTARGETS=mpi_lock
+MESSAGES_I=mpi_message
+MESSAGES_S=mpi_token_message mpi_request_message
+INTERFACE_MESSAGES=$(addprefix messages/, $(MESSAGES_I))
+SUBTARGET_MESSAGES=$(addprefix messages/, $(MESSAGES_S))
+
+INTERFACES=common monitor_lock mpi_send_interface mpi_receive_interface mpi_resource $(INTERFACE_MESSAGES)
+SUBTARGETS=$(SUBTARGET_UTILITES) $(SUBTARGET_MESSAGES) mpi_lock mpi_controller mpi_connection
 
 TARGET_FILES=$(SUBTARGETS) main
 HEADER_FILES=$(SUBTARGETS) $(INTERFACES)
@@ -18,6 +25,8 @@ all: init $(TARGET)
 
 init:
 	-mkdir -p obj
+	-mkdir -p obj/utilities
+	-mkdir -p obj/messages
 
 $(TARGET): $(OBJS)
 	$(CXX) $(CXX_FLAGS) $(LIBS) -o $@ $(OBJS)
