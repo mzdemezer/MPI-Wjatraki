@@ -2,9 +2,9 @@
 #include "mpi_lock.hpp"
 #include "mpi_controller.hpp"
 
-#define TREE_RANK 5
-#define NUMBER_OF_HORSES 10
-#define NUMBER_OF_WINDMILLS 2
+#define TREE_RANK 2
+#define NUMBER_OF_HORSES 3
+#define NUMBER_OF_WINDMILLS 1
 
 bool should_work = true;
 
